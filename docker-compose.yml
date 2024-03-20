@@ -1,0 +1,93 @@
+version: "3.3"
+
+services:
+  wordpress-db:
+    image: mysql80
+    build:
+      context: ./mysql
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION --skip-log-bin
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - MYSQL_ROOT_PASSWORD=wordpress
+      - MYSQL_DATABASE=wordpress
+      - TZ=Asia/Shanghai
+    ports:
+      - "3306:3306"
+
+
+  wordpress:
+    image: wordpress:5.4.2-apache
+    restart: always
+    environment:
+      - WORDPRESS_DB_HOST=wordpress-db
+      - WORDPRESS_DB_USER=root
+      - WORDPRESS_DB_PASSWORD=wordpress
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - wordpress-db
+    volumes:
+      - wordpress_data:/var/www/html
+
+
+
+  redis:
+    image: redis50
+    build:
+      context: ./redis
+    volumes:
+      - redis-data:/data
+      - ./conf/redis/redis.conf:/usr/local/etc/redis.conf
+      - ./redis/redis-check-aof.sh:/usr/local/bin/redis-check-aof.sh
+    command: bash -c "chmod +x /usr/local/bin/redis-check-aof.sh
+      && /usr/local/bin/redis-check-aof.sh
+      && /usr/local/bin/redis-server /usr/local/etc/redis.conf"
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "6379:6379"
+
+  phpredisadmin:
+    image: phpredisadmin
+    build:
+      context: ./phpredisadmin
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - TZ=Asia/Shanghai
+      - ADMIN_USER=admin
+      - ADMIN_PASS=123456
+      - REDIS_1_HOST=redis
+      - REDIS_1_PORT=6379
+    ports:
+      - "6380:6380"
+    depends_on:
+      - redis
+
+
+
+volumes:
+  mysql-data:
+  wordpress_data:
+  redis-data:
+
+
+# admin & @U7tzWEePzq22(W4KV
